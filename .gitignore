@@ -1,3 +1,15 @@
+/static/token.txt
+tempCodeRunnerFile.py
+testing_bot.py
+/cogs/__pycache__/
+/cogs/example.py
+/cogs/test.py
+
+
+#######################################
+###     AUTOMATICALLY GENERATED     ###
+#######################################
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
