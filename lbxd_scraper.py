@@ -1,10 +1,12 @@
-import time
-import resources as res
-from typing import List
-from bs4 import BeautifulSoup
-import requests
 import concurrent.futures
+import time
+from typing import List
 
+import requests
+from bs4 import BeautifulSoup
+
+import resources as res
+from resources import Movie, Movielist
 
 # Because of lazy load, for every movie need to make info request in form of
 # GET 'https://letterboxd.com/ajax/poster/film/goldeneye/menu/linked/125x187/'
@@ -18,7 +20,6 @@ def req_movie_info(movie):
     menu = movie['data-menu']
 
     data = requests.get(res.LBXD_URL + f'/ajax/poster{target_link}{menu}/{linked}/{img_width}x{img_height}')
-    # print(f'Loaded info for {film_id}')
 
     return data.text if data.status_code == requests.codes.ok else None  # Returns HTML or None
 
@@ -35,7 +36,7 @@ def get_watchlist_pages(user: str) -> int:
         # Directly get user watchlist length to save work
     else:
         print('Error user doesnt exist')
-        return None
+        return -1
 
 
 def _get_watchlist_pages_direct(page) -> int:
@@ -76,7 +77,7 @@ def _get_watchlist_size_direct(page) -> int:
     return size
 
 
-def get_movies_on_page(page) -> List[res.Movie]:
+def get_movies_on_page(page) -> List[Movie]:
     """Takes the HTML movie list of a watchlist page and returns a list of Movies"""
     movies = []
 
@@ -106,8 +107,7 @@ def get_movies_on_page(page) -> List[res.Movie]:
             img_src = img['src']
             link = a['href']
 
-            movie = res.Movie(name, release_year, id=id, img=img_src, link=f'{res.LBXD_URL}{link}')
-            # print(f'Loaded movie {movie}')
+            movie = Movie(name, release_year, id=id, img=img_src, link=f'{res.LBXD_URL}{link}')
             movies.append(movie)
 
     return movies
@@ -123,14 +123,15 @@ def get_page(url):
             return []
 
 
-def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
-    """Returns a tuple (length, list) where:
-    - length = watchlist length (-1 for no user found)
-    - list = (empty) list (of movies)"""
+def get_watchlist(user: str, limit: int = 0) -> Movielist:
+    """Returns  Movielist object containing movies and some functionality
+    Limit > 0 means the list that gets returned at the end only has Limit movies in it.
+    This is so the bot doesnt need to request every page every time
+    check that classes documentation."""
     # TODO add random.shuffle(watchlist)  # So watchlist doesnt show same movies every time
     # Hard because loading from site is always the same and you would need to load all to shuffle
     movies_loaded = 0
-    watchlist = []
+    watchlist = Movielist(user=user, name="watchlist")
 
     start_time = time.time()
 
@@ -141,14 +142,10 @@ def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
 
     if first_page.status_code == 200:  # Account exists
         # Directly get user watchlist length to save work
-        wl_size = _get_watchlist_size_direct(first_page.text)
+        #wl_size = _get_watchlist_size_direct(first_page.text)
         pages = _get_watchlist_pages_direct(first_page.text)
+
         # DEV Note: This leads to a req being made to the first page TWICE. Trying to fix it
-
-        if pages == 0 or wl_size == 0:
-            print('EMPTY LIST???')  # TODO remove?
-            return (wl_size, watchlist)
-
         # List is not empty
         movies_on_page = get_movies_on_page(first_page.text)
         movies_loaded += len(movies_on_page)
@@ -159,8 +156,8 @@ def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
         if pages > 1 and (limit != 0 and movies_loaded < limit) or limit < 1:
             # Use threads to load all the following pages at the same time.
             # These threads should create threads inside to load the images
+            futures = []
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = []
                 for page in range(2, pages + 1):
                     futures.append(executor.submit(get_page, WL_URL + f'/page/{page}'))
 
@@ -172,19 +169,17 @@ def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
                 if limit > 0 and movies_loaded >= limit:
                     break
 
-        print(f'{len(watchlist)} movies successfully loaded from the site!')
-        print(f'--- {time.time() - start_time} seconds')
+        print(f'{user}: {watchlist.length()} movies loaded from lbxd in {round(time.time() - start_time, 5)} seconds!')
 
-        if limit > 0 and limit <= movies_loaded:  # If limit was given, splice watchlist
-            watchlist = watchlist[:limit]
-    else:
-        print('Error: Account does not exist!')
-        wl_size = -1
-
-    return (wl_size, watchlist)
+        if limit > 0 and limit <= movies_loaded:  # If limit was given and isnt out of index, cut from list
+            watchlist.set_movies(watchlist.get_movies(end=limit))
+        return watchlist
+    else:  # Account not exists
+        print(f"Error: Account '{user}' does not exist!")
+        return None
 
 
 if __name__ == '__main__':
     user = 'l1chael'
     wl = get_watchlist(user)
-    print(f"{wl[0]} - {user}'s watchlist contains: {len(wl[1])} movies")
+    print(f"{wl.length()} - {wl.name} contains: {len(wl.get_movies())} movies")

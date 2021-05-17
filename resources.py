@@ -4,6 +4,7 @@ LBXD_URL = 'https://letterboxd.com'
 DB_NAME = 'main.sqlite'
 DISCORD_TOKEN = './static/discord_token.txt'
 CMD_PREFIX = '.'  # TODO these alll need to go into a config outside
+BOT_NAME = 'LBxt'
 
 
 class Movie(object):
@@ -53,12 +54,33 @@ class Movie(object):
 class Movielist(object):
 
     # To create movie you need at least year and name
-    def __init__(self, movies: List[Movie] = None, name="Movie List"):
+    def __init__(self, user=BOT_NAME, name="Movie List"):
         """List of movies that provides class operations. Optionally provide a name to your list"""
         self.movies = []
-        if movies:
-            self.movies.extend(movies)  # Append
-        self.name = name
+        self.name = str(name)
+        self.user = str(user)
+
+    def common_movies(movielists: List['Movielist']) -> 'Movielist':
+        """Takes a list of Movielists and finds all common movies, which are then returned in a new Movielist"""
+        if not movielists:  # Empty, or None
+            return None
+        if len(movielists) == 1:  # Only one element in list, return it
+            return movielists[0]
+
+        common_movies = Movielist(name='Common Movies')
+
+        movielists.sort()  # Sort by length, shortest first
+        base_list = movielists[0]
+        other_movielists = movielists[1:]
+
+        for movie in base_list.get_movies():
+            for movielist in other_movielists:
+                # Movie has to be in all lists so if its not in this one its definitely not in common
+                if not movielist.contains_movie(movie):
+                    continue
+                common_movies.append(movie)
+
+        return common_movies
 
     """def json(self):
         try:
@@ -73,20 +95,45 @@ class Movielist(object):
             print(e)
             return None"""
 
-    def get_movies(self):
+    def get_movies(self, begin: int = 0, end: int = None) -> List[Movie]:
+        if end and begin < end:
+            return self.movies[begin:end]
         return self.movies  # getattr(self, 'movies')
 
+    def set_movies(self, movies: List[Movie]):
+        setattr(self, 'movies', movies)
+
+    def join_movielist(self, other_movielist: 'Movielist' = None):
+        self.movies.extend(other_movielist.get_movies)
+        self.name + ", " + other_movielist.name
+        self.user + ", " + other_movielist.user
+
     def append(self, movie: Movie):
+        """Append a movie to the movielist"""
         return self.movies.append(movie)
 
     def extend(self, movies: List[Movie]):
-        return self.movies.extend(movies)
+        """Append a list of movies to the movielist"""
+        self.movies.extend(movies)
 
-    def length(self):
+    def length(self) -> int:
+        """Returns the length of the contained movielist"""
         return len(self.movies)
 
-    def get_overlapping_movies(self, other: 'Movielist'):
-        pass
+    def contains_movie(self, movie: Movie) -> bool:
+        return movie in self.movies
+
+    def get_common_movies(self, other_movielists: List['Movielist']):
+        common_movies = Movielist(name='Common Movies')
+
+        for movie in self.movies:
+            for movielist in other_movielists:
+                # Movie has to be in all lists so if its not in this one its definitely not in common
+                if not movielist.contains_movie(movie):
+                    continue
+                common_movies.append(movie)
+
+        return common_movies
 
     def __eq__(self, other):
         """Compares two movieslists. Returns true if all their movies are equal."""
@@ -104,4 +151,6 @@ class Movielist(object):
         return self.length() < other.length()
 
     def __str__(self) -> str:
-        return f'{self.name} with {len(self.movies)} movies'
+        return f"{self.user}'s list '{self.name}' with {len(self.movies)} movies"
+
+    __repr__ = __str__

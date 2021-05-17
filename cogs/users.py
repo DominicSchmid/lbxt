@@ -10,7 +10,7 @@ from discord.ext import commands
 from sqlite3 import OperationalError
 
 import db
-from lbxd_scraper import get_watchlist
+from lbxd_scraper import get_watchlist_size
 
 
 class Users(commands.Cog):
@@ -32,10 +32,11 @@ class Users(commands.Cog):
         embed.add_field(name="ID", value=target.id, inline=True)
         lbxd_id = db.fetch_user(target.id)
         if lbxd_id:
-            embed.add_field(name="Letterboxd", value=lbxd_id, inline=True)
-            wl_size = get_watchlist(lbxd_id, 1)[0]  # Limit to 1 so only one request happens
+            embed.add_field(name="Letterboxd", value=f'[{lbxd_id}]({res.LBXD_URL}/{lbxd_id})', inline=True)
+            wl_size = get_watchlist_size(lbxd_id)  # Limit to 1 so only one request happens
             if wl_size != -1:  # If user exists
-                embed.add_field(name="Watchlist", value=f'{wl_size} movies', inline=True)
+                embed.add_field(name="Watchlist",
+                                value=f'[{wl_size} movies]({res.LBXD_URL}/{lbxd_id}/watchlist)', inline=True)
         await ctx.send(embed=embed)
 
     @commands.command(name='link', pass_context=True)
