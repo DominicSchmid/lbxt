@@ -11,7 +11,6 @@ import db
 class Cinema(commands.Cog):
 
     def __init__(self, client):
-        self.cinema_watchers = []
         self.client = client
 
     @commands.Cog.listener()
@@ -22,18 +21,21 @@ class Cinema(commands.Cog):
             description = None
             cinema_channel = self.client.get_channel(int(cinema[1]))  # Get cinema obj from int ID
             # Muting also calls this, so check for after=before
+
             if after.channel == cinema_channel and before.channel != cinema_channel:
                 # TODO send PM telling user if a watchparty has already been started and if not how to make one
-                if self.cinema_watchers:
+                cinema_watchers = len(after.channel.members) - 1
+                if cinema_watchers > 0:
                     # TODO send into cinema channel
-                    description = f'**{member.name}** just joined the cinema with {len(self.cinema_watchers)} other(s)! Consider joining 🙂'
+                    description = f'**{member.name}** just joined the cinema with {cinema_watchers} other(s)! Consider joining 🙂'
                 else:
                     description = f'**{member.name}** just joined the cinema! Consider joining 🙂'
-                self.cinema_watchers.append(member)
             elif after.channel != cinema_channel and before.channel == cinema_channel:
-                description = f'**{member.name}** just left the cinema! 😢'
-                if member in self.cinema_watchers:
-                    self.cinema_watchers.remove(member)
+                cinema_watchers = len(before.channel.members)
+                if cinema_watchers == 1:
+                    description = f'**{member.name}** just left the cinema. Now {before.channel.members[0].mention} is all alone! 😭'
+                else:
+                    description = f'**{member.name}** just left the cinema! 😢'
 
             text = self.get_cinema_text_channel(member.guild.id)
             if text and description:
@@ -131,12 +133,14 @@ class Cinema(commands.Cog):
         else:
             await ctx.send(error)
 
-    @cinema.command(name='clear', aliases=['purge', 'pc', 'cc'])
+    @cinema.command(name='clear', aliases=['purge'])
     async def clear_cinema(self, ctx, amount: Optional[int]):  # Everybody can use this command in the cinema channel.
         """Delete a given amount of messages or purge entire cinema channel"""
         text = self.get_cinema_text_channel(ctx.guild.id)
-        if text and int(text) == int(ctx.channel.id):
+        if text and int(text.id) == int(ctx.channel.id):
             await text.purge(limit=amount)
+            if amount is None:
+                amount = 'all'
             await text.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
     # Optional:

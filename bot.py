@@ -69,6 +69,8 @@ async def change_status():
 async def clear(ctx, amount: Optional[int]):
     """Delete a given amount of messages or purge entire channel"""
     await ctx.channel.purge(limit=amount)  # +1 because the delete command also counts as message
+    if amount is None:
+        amount = 'all'
     await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
 for filename in os.listdir('./cogs'):
