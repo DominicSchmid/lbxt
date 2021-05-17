@@ -48,7 +48,22 @@ def _get_watchlist_pages_direct(page) -> int:
             return 1
         soup = BeautifulSoup(str(pages[-1]), 'html.parser')  # Access last list element
         return int(soup.find('a').get_text())
-    return 0
+    return 1  # 1 because this is direct, which means the site exists but on the first page no pages are displayed so it cant find it
+
+
+def get_watchlist_size(user: str) -> int:
+    """Returns the watchlist size or -1 if account does not exist"""
+
+    WL_URL = res.LBXD_URL + f'/{user}/watchlist'
+    # Start by only getting first page. From there get how many more pages there are, if any
+    first_page = requests.get(WL_URL)
+
+    if first_page.status_code == 200:  # Account exists
+        return _get_watchlist_size_direct(first_page.text)
+        # Directly get user watchlist length to save work
+    else:
+        print('Error user doesnt exist')
+        return -1
 
 
 def _get_watchlist_size_direct(page) -> int:
@@ -116,6 +131,7 @@ def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
     # Hard because loading from site is always the same and you would need to load all to shuffle
     movies_loaded = 0
     watchlist = []
+
     start_time = time.time()
 
     WL_URL = res.LBXD_URL + f'/{user}/watchlist'
@@ -130,7 +146,7 @@ def get_watchlist(user: str, limit: int = 0) -> List[res.Movie]:
         # DEV Note: This leads to a req being made to the first page TWICE. Trying to fix it
 
         if pages == 0 or wl_size == 0:
-            print('EMPTY LIST???')
+            print('EMPTY LIST???')  # TODO remove?
             return (wl_size, watchlist)
 
         # List is not empty

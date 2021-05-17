@@ -13,6 +13,7 @@ cogs = []  # stores all .py files
 
 """ TODO's
 - add an info command that shows eg your cinema channel, how many linked users, how many movies watched together idk
+- todo random chance to get emojis in your message?? idk lmao im out of ideas i havent slept in 3 days
 """
 
 
@@ -56,6 +57,7 @@ async def reload(ctx, extension=None):
 
 @client.command()
 async def ping(ctx):  # First parameter of function must be the context
+    """Replies 'Pong!' and shows your delay to the bot"""
     await ctx.send(f'Pong! {round(client.latency * 1000)}ms')
 
 
