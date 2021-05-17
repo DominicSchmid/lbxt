@@ -54,6 +54,11 @@ async def reload(ctx, extension=None):
         load_cogs(cogs)
 
 
+@client.command()
+async def ping(ctx):  # First parameter of function must be the context
+    await ctx.send(f'Pong! {round(client.latency * 1000)}ms')
+
+
 @tasks.loop(seconds=30)  # Update status every 30 seconds
 async def change_status():
     await client.change_presence(status=discord.Status.online, activity=discord.Game(f'.help - {len(client.guilds)} servers'))
