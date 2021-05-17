@@ -2,7 +2,7 @@ LBXD_LOGO = 'https://i.imgur.com/qpz1mJ0.png'
 LBXD_URL = 'https://letterboxd.com'
 DB_NAME = 'main.sqlite'
 DISCORD_TOKEN = './static/discord_token.txt'
-CMD_PREFIX = '.'
+CMD_PREFIX = '.'  # TODO these alll need to go into a config outside
 
 
 class Movie(object):

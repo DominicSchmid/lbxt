@@ -1,178 +1,193 @@
-import sqlite3
-from datetime import datetime
-
 import discord
 import resources as res
 from discord import Embed
 from discord.ext import commands
 
+from datetime import datetime
+
+import db
+
 
 class Cinema(commands.Cog):
 
-    cinema_watchers = []
-
     def __init__(self, client):
+        self.cinema_watchers = []
         self.client = client
-
-    def fetch_cinema(self, ctx):
-        """Returns the Cinema ID for the given server or None if there isn't one"""
-        db = sqlite3.connect(res.DB_NAME)
-        cursor = db.cursor()
-        sql = 'SELECT * FROM cinemas WHERE server_id = ?'
-        cursor.execute(sql, (ctx.guild.id,))
-        result = cursor.fetchone()
-
-        db.commit()
-        cursor.close()
-        db.close()
-
-       # If channel found in DB but not on Server, return Null
-        return result[1] if result else None
-
-    def delete_cinema_from_db(self, channel_id):
-        """Takes a channel ID that will be used to delete a cinema link from the database"""
-        db = sqlite3.connect(res.DB_NAME)
-        cursor = db.cursor()
-        cursor.execute('DELETE FROM cinemas WHERE channel_id = ?', (channel_id,))
-        db.commit()
-        cursor.close()
-        db.close()
-
-    def get_cinema_creation_help_easy(self, message: str) -> Embed:
-        embed = Embed(title='Cinema Help', description=f"""**{message}**
-            To set up a cinema channel, write ```{res.CMD_PREFIX}cinema set <channel>``` where `<channel>` is the desired **voice** channel (case sensitive)
-            If this does not work, use `{res.CMD_PREFIX}cinema idset` to show a more advanced guide that always works.""",
-                      color=discord.Colour.green())
-        embed.set_thumbnail(url=res.LBXD_LOGO)
-
-        return embed
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        """Detects who's currently in the cinema voice channel."""
-        cinema = self.fetch_cinema(member)
+        """Detects who's currently in the cinema voice channel"""
+        cinema = db.fetch_cinemas(member.guild.id)
         if cinema:
-            cinema_channel = self.client.get_channel(int(cinema))  # Get cinema obj from int ID
+            description = None
+            cinema_channel = self.client.get_channel(int(cinema[1]))  # Get cinema obj from int ID
             # Muting also calls this, so check for after=before
             if after.channel == cinema_channel and before.channel != cinema_channel:
                 # TODO send PM telling user if a watchparty has already been started and if not how to make one
                 if self.cinema_watchers:
-                    print(f'{member} just joined the cinema with {len(self.cinema_watchers)} other(s)!')
+                    # TODO send into cinema channel
+                    description = f'**{member.name}** just joined the cinema with {len(self.cinema_watchers)} other(s)! Consider joining 🙂'
                 else:
-                    print(f'{member} just joined the cinema!')
+                    description = f'**{member.name}** just joined the cinema! Consider joining 🙂'
                 self.cinema_watchers.append(member)
             elif after.channel != cinema_channel and before.channel == cinema_channel:
-                print(f'{member} just left the cinema!')
+                description = f'**{member.name}** just left the cinema! 😢'
                 if member in self.cinema_watchers:
                     self.cinema_watchers.remove(member)
 
+            text = self.get_cinema_text_channel(member.guild.id)
+            if text and description:
+                print(description)
+                await text.send(description)
+
     @commands.group(name='cinema', aliases=['cine', 'c'], invoke_without_command=True)
     async def cinema(self, ctx):
-        """Show cinema channel. <help cinema> to learn how"""
-        cinema = self.fetch_cinema(ctx)
+        """Shows this server's cinema channels or a tutorial"""
+        cinema = db.fetch_cinemas(ctx.guild.id)
         if cinema:
-            cinema_name = self.client.get_channel(int(cinema))
-            if cinema_name:
-                embed = Embed(title='Cinema', description=f'{self.client.get_channel(int(cinema))} is the cinema for {ctx.message.guild.name}',
+            cinema_text_name = self.client.get_channel(int(cinema[0]))
+            cinema_voice_name = self.client.get_channel(int(cinema[1]))
+            if cinema_text_name and cinema_voice_name:
+                embed = Embed(title=f'{ctx.guild.name} Cinema',
                               color=discord.Colour.green())
+                embed.add_field(name='Text Channel', value=f'#{cinema_text_name}')
+                embed.add_field(name='Voice Channel', value=cinema_voice_name)
                 embed.set_thumbnail(url=res.LBXD_LOGO)
             else:
-                self.delete_cinema_from_db(cinema)
-                embed = self.get_cinema_creation_help_easy("You haven't set up a cinema yet.")
+                # This means a channel was deleted while the bot wasn away, so it will remove cinemas
+                db.delete_cinemas(ctx.guild.id)
+                embed = get_cinema_creation_help_easy("You haven't set up a cinema yet.")
         else:
-            embed = self.get_cinema_creation_help_easy("You haven't set up a cinema yet.")
+            embed = get_cinema_creation_help_easy("You haven't set up a cinema yet.")
 
         await ctx.send(embed=embed)
 
     @cinema.command(name='set')
-    async def set_cinema_channel(self, ctx, channel: discord.VoiceChannel):
-        """Select voice channel for watchparties"""
+    async def set_cinema_channel(self, ctx, text_channel: discord.TextChannel, voice_channel: discord.VoiceChannel):
+        """Select text and voice channel for watchparties"""
 
-        db = sqlite3.connect(res.DB_NAME)
-        cursor = db.cursor()
-        sql = 'SELECT * FROM cinemas WHERE server_id = ?'
-        cursor.execute(sql, (ctx.guild.id,))
-        result = cursor.fetchone()
+        result = db.execute('SELECT * FROM cinemas WHERE server_id = ?', (ctx.guild.id,))
 
         if result:
-            sql = ('UPDATE cinemas SET channel_id = ? WHERE server_id = ?')
-            val = (channel.id, ctx.guild.id)
-            cursor.execute(sql, val)
+            sql = ('UPDATE cinemas SET text_id = ?, voice_id = ? WHERE server_id = ?')
+            val = (text_channel.id, voice_channel.id, ctx.guild.id)
+            db.execute(sql, val)
         else:
-            sql = ('INSERT INTO cinemas(server_id, channel_id) VALUES (?,?)')
-            val = (ctx.guild.id, channel.id)
-            cursor.execute(sql, val)
+            sql = ('INSERT INTO cinemas(server_id, text_id, voice_id) VALUES (?,?,?)')
+            val = (ctx.guild.id, text_channel.id, voice_channel.id)
+            db.execute(sql, val)
 
-        db.commit()
-        cursor.close()
-        db.close()
-
-        embed = Embed(title='Cinema', description=f'**{channel.name}** is the new cinema for **{ctx.message.guild.name}**',
-                      color=discord.Colour.green(), timestamp=datetime.utcnow())
+        embed = Embed(title=f'{ctx.message.guild.name} has a new cinema!', description='Join the voice channel during watchparties and use the text channel to play around with me!',
+                      color=discord.Colour.green())
+        embed.add_field(name='Text Channel', value=f'#{text_channel.name}')
+        embed.add_field(name='Voice Channel', value=voice_channel.name)
         embed.set_thumbnail(url=res.LBXD_LOGO)
         await ctx.send(embed=embed)
 
     @cinema.command(name='unset')
-    async def unset_cinema_channel(self, ctx):
+    async def unset_cinema_channels(self, ctx, message=None):
         """Remove cinema channel binding"""
-        cinema = self.fetch_cinema(ctx)
+        cinema = db.fetch_cinemas(ctx.guild.id)
 
         if cinema:
-            self.delete_cinema_from_db(cinema)
-            cinema_name = self.client.get_channel(int(cinema))
-            if cinema_name:
-                description = f'**{self.client.get_channel(int(cinema))}** is no longer the cinema for {ctx.message.guild.name}'
+            db.delete_cinemas(ctx.guild.id)
+            text = self.client.get_channel(int(cinema[0]))
+            voice = self.client.get_channel(int(cinema[1]))
+            if text and voice:
+                description = f'Successfully unlinked **#{text}** and **{voice}** cinema channels for {ctx.message.guild.name}'
             else:
-                description = f'Successfully unlinked the cinema associated with **{ctx.message.guild.name}**'
+                description = f'Successfully unlinked the cinema channels for **{ctx.message.guild.name}**'
         else:
-            description = 'You haven\'t set a cinema channel yet.\nNo changes have been made.'
+            description = "You haven't set up any cinema channels yet.\nNo changes have been made."
+
+        if message:
+            description = message
 
         embed = Embed(title='Cinema', description=description,
                       color=discord.Colour.red())
-
         embed.set_thumbnail(url=res.LBXD_LOGO)
         await ctx.send(embed=embed)
 
     @cinema.command(name='idset')
     async def cinema_idset(self, ctx):
+        """Shows how to set up cinema using IDs instead of names"""
         embed = Embed(title='Advanced Cinema Help', description="**Here's how you can always set up a cinema:**",
                       color=discord.Colour.green())
         embed.add_field(name='**1:**', value="Go to your settings and under 'Advanced' enable 'Developer Mode'")
-        embed.add_field(name='**2:**', value="Right-click on your desired cinema voice channel")
+        embed.add_field(name='**2:**', value="Right-click on your desired cinema **text** channel")
         embed.add_field(name='**3:**', value="At the bottom, click 'Copy ID'")
+        embed.add_field(name='**4:**', value="Do the same for your desired **voice** channel'")
         embed.add_field(
-            name='**4:**', value=f"Paste this number after into `{res.CMD_PREFIX}cinema set <Channel ID>` and you're *Done!*")
+            name='**5:**', value=f"Paste these numbers into `{res.CMD_PREFIX}cinema set <text channel> <voice channel>` and you're *Done!*")
         embed.set_thumbnail(url=res.LBXD_LOGO)
         await ctx.send(embed=embed)
 
     @set_cinema_channel.error
     async def set_cinema_channel_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):  # If ANY command gives this error at any point, this command runs
-            embed = self.get_cinema_creation_help_easy('Please specify a voice channel as your cinema!')
+            embed = get_cinema_creation_help_easy(
+                'Please specify both a text channel and voice channel for your cinema!')
             await ctx.send(embed=embed)
         else:
             await ctx.send(error)
+
+    @cinema.command(name='clear', aliases=['purge', 'pc', 'cc'])
+    async def clear_cinema(self, ctx, amount: int):  # Everybody can use this command in the cinema channel.
+        """Delete a given amount of messages or purge entire cinema channel"""
+        text = self.get_cinema_text_channel(ctx.guild.id)
+        if text and int(text) == int(ctx.channel.id):
+            await text.purge(limit=amount)
+            await text.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
     # Optional:
     # So if your bot leaves a guild, the guild is removed from the dict
 
     @commands.Cog.listener()
     async def on_guild_remove(self, ctx):  # TODO idk if this works
-        self.unset_cinema_channel(ctx)
+        self.unset_cinema_channels(ctx)
 
     @commands.Cog.listener()
+    # So long because if text is deleted need to send to system channel
     async def on_guild_channel_delete(self, channel):
-        cinema = self.fetch_cinema(channel)
-        if cinema and int(cinema) == channel.id:
-            print(f'Cinema channel {channel.id} in {channel.guild.id} was just deleted')
-            self.delete_cinema_from_db(channel.id)
+        cinema = db.fetch_cinemas(channel.id)
+        if cinema:
+            if int(cinema[0]) == int(channel.id):
+                await channel.guild.system_channel.send(f'Hey! The cinema text channel **#{channel.name}** ({channel.id}) was just deleted. Removed link.')
+                print(f'Cinema text channel {channel.id} in {channel.guild.id} was just deleted')
+            elif int(cinema[1]) == int(channel.id):
+                text = self.client.get_channel(int(cinema[0]))
+                await text.send(f'Hey! The cinema voice channel **{channel.name}** ({channel.id}) was just deleted. Removed link.')
+                print(f'Cinema voice channel {channel.id} in {channel.guild.id} was just deleted')
+            db.delete_cinemas(channel.id)
 
     @commands.Cog.listener()
+    # So long because if text is deleted need to send to system channel
     async def on_private_channel_delete(self, channel):
-        cinema = self.fetch_cinema(channel)
-        if cinema and int(cinema) == channel.id:
-            print(f'Cinema channel {channel.id} in {channel.guild.id} was just deleted')
-            self.delete_cinema_from_db(channel.id)
+        cinema = db.fetch_cinemas(channel.id)
+        if cinema:
+            if int(cinema[0]) == int(channel.id):
+                await channel.guild.system_channel.send(f'Hey! The private cinema text channel **#{channel.name}** ({channel.id}) was just deleted. Removed link.')
+                print(f'Private cinema text channel {channel.id} in {channel.guild.id} was just deleted')
+            elif int(cinema[1]) == int(channel.id):
+                text = self.client.get_channel(int(cinema[0]))
+                await text.send(f'Hey! The private cinema voice channel **{channel.name}** ({channel.id}) was just deleted. Removed link.')
+                print(f'Private cinema voice channel {channel.id} in {channel.guild.id} was just deleted')
+            db.delete_cinemas(channel.id)
+
+    def get_cinema_text_channel(self, server_id):
+        """Returns the ID of the cinema text channel of a given contex or None if there isn't one"""
+        cinema = db.fetch_cinemas(server_id)
+        return self.client.get_channel(int(cinema[0])) if cinema else None
+
+
+def get_cinema_creation_help_easy(message: str) -> Embed:
+    embed = Embed(title='Cinema Help', description=f"""**{message}**
+            To set up a cinema channel, write ```{res.CMD_PREFIX}cinema set <text channel> <voice channel>``` (case sensitive)
+            If this does not work, use `{res.CMD_PREFIX}cinema idset` to show a more advanced guide that always works.""",
+                  color=discord.Colour.green())
+    embed.set_thumbnail(url=res.LBXD_LOGO)
+
+    return embed
 
 
 def setup(client):

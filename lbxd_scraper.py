@@ -1,4 +1,3 @@
-import json
 import resources as res
 from typing import List
 from bs4 import BeautifulSoup
@@ -24,6 +23,7 @@ def lazy_load_movie(movie):
 
 
 def get_watchlist_size(user: str) -> int:
+    """Returns the watchlist size or -1 on error (and maybe 0, needs to be tested)"""
     size = -1
     data = requests.get(res.LBXD_URL + f'/{user}/watchlist')
     soup = BeautifulSoup(data.text, 'html.parser')

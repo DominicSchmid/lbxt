@@ -1,10 +1,10 @@
-import sqlite3
-
 import discord
 import lbxd_scraper
 import resources as res
 from discord import Embed, Member
 from discord.ext import commands
+
+from db import fetch_user
 
 
 class Watchlist(commands.Cog):
@@ -13,31 +13,19 @@ class Watchlist(commands.Cog):
         self.client = client
         self.preview_amount = 5
 
-    def fetch_user(self, disc_id):
-        db = sqlite3.connect(res.DB_NAME)
-        cursor = db.cursor()
-        sql = 'SELECT * FROM users WHERE disc_id = ?'
-        cursor.execute(sql, (disc_id,))
-        result = cursor.fetchone()
-
-        db.commit()
-        cursor.close()
-        db.close()
-        return result
-
         # todo make getlist command, opt limit parameter that shows imgs until like 10, list until like 50 and info otherwise
     @commands.group(name='wl', aliases=['watchlist'], invoke_without_command=True)
     async def watchlist(self, ctx):
-        """Show your watchlist.
+        """Shows your watchlist
 
         Add a number after the command to show a specific amount of movies 
         <= 5: With images  -> number saved in self.preview_amount
         <= 50: List without images
         > 50: General info"""
-        user_found = self.fetch_user(ctx.author.id)
-        if user_found:
+        lbxd_id = fetch_user(ctx.author.id)
+        if lbxd_id:
+            # TODO make a different command to load like all of them
             await ctx.send(f'Loading watchlist for {ctx.author.mention}. This may take a few seconds...')
-            lbxd_id = user_found[1]
 
             wl_size = lbxd_scraper.get_watchlist_size(lbxd_id)
             if wl_size > 0:

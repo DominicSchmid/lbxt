@@ -58,6 +58,13 @@ async def change_status():
     await client.change_presence(status=discord.Status.online, activity=discord.Game(f'.help - {len(client.guilds)} servers'))
 
 
+@client.command(name='clear', aliases=['purge'])
+@commands.has_permissions(manage_messages=True)  # Only run if user has delete permissions
+async def clear(ctx, amount: int):
+    """Delete a given amount of messages or purge entire channel"""
+    await ctx.channel.purge(limit=amount)
+    await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
+
 for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         cogs.append(filename)
