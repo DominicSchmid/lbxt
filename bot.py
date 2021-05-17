@@ -4,6 +4,7 @@ import resources as res
 
 import discord
 from discord.ext import commands, tasks
+from typing import Optional
 
 intents = discord.Intents(messages=True, guilds=True, reactions=True, members=True, presences=True, voice_states=True)
 client = commands.Bot(command_prefix=res.CMD_PREFIX, intents=intents, case_insensitive=True)  # Use dot to make commands
@@ -60,9 +61,9 @@ async def change_status():
 
 @client.command(name='clear', aliases=['purge'])
 @commands.has_permissions(manage_messages=True)  # Only run if user has delete permissions
-async def clear(ctx, amount: int):
+async def clear(ctx, amount: Optional[int]):
     """Delete a given amount of messages or purge entire channel"""
-    await ctx.channel.purge(limit=amount)
+    await ctx.channel.purge(limit=amount)  # +1 because the delete command also counts as message
     await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
 for filename in os.listdir('./cogs'):
@@ -70,6 +71,10 @@ for filename in os.listdir('./cogs'):
         cogs.append(filename)
 load_cogs(cogs)  # Load all cogs. No arg specified -> refresh from folder
 
-with open(res.DISCORD_TOKEN) as f:
-    token = f.read()
-    client.run(token)
+token = os.getenv('DISCORD_TOKEN')
+if not token:
+    with open(res.DISCORD_TOKEN) as f:
+        token = f.read()
+
+client.run(token)
+print('Bot started!')

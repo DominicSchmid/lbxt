@@ -2,7 +2,7 @@ import discord
 import resources as res
 from discord import Embed
 from discord.ext import commands
-
+from typing import Optional
 from datetime import datetime
 
 import db
@@ -132,7 +132,7 @@ class Cinema(commands.Cog):
             await ctx.send(error)
 
     @cinema.command(name='clear', aliases=['purge', 'pc', 'cc'])
-    async def clear_cinema(self, ctx, amount: int):  # Everybody can use this command in the cinema channel.
+    async def clear_cinema(self, ctx, amount: Optional[int]):  # Everybody can use this command in the cinema channel.
         """Delete a given amount of messages or purge entire cinema channel"""
         text = self.get_cinema_text_channel(ctx.guild.id)
         if text and int(text) == int(ctx.channel.id):
