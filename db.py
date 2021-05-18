@@ -70,9 +70,7 @@ def fetch_links_from_userlist(user_list: List) -> List:
         return []
 
     user_tuple = tuple([member.id for member in user_list])  # ID Tuple (2552747, 235626, 62742, etc)
-
     db = sqlite3.connect(res.DB_NAME)
-    db.set_trace_callback(print)  # prints all code
     cursor = db.cursor()
     sql = f'SELECT * FROM users WHERE disc_id IN {user_tuple}'
     users = cursor.execute(sql).fetchall()

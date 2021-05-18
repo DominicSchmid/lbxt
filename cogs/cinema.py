@@ -133,7 +133,7 @@ class Cinema(commands.Cog):
             await ctx.send(error)
 
     @cinema.command(name='clear', aliases=['purge'])
-    async def clear_cinema(self, ctx, amount: Optional[int]):  # Everybody can use this command in the cinema channel.
+    async def clear_cinema(self, ctx, amount=10):  # Everybody can use this command in the cinema channel.
         """Delete a given amount of messages or purge entire cinema channel"""
         text = self.get_cinema_text_channel(ctx.guild.id)
         if text and int(text.id) == int(ctx.channel.id):

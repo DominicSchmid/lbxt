@@ -61,11 +61,11 @@ async def reload(ctx, extension=None):
 
 @client.command()
 async def lbxthelp(ctx):  # First parameter of function must be the context
-    embed = Embed(color=discord.Colour.green(), timestamp=datetime.utcnow())
+    embed = Embed(color=discord.Colour.green())
     embed.set_author(
         name='Letterboxd Bot', icon_url=res.LBXD_LOGO)
     embed.set_footer(
-        text='Made by Domski#1087. Send PM for help', icon_url='https://i.imgur.com/vahlwre.jpg')
+        text='Made by Domski#1087. Send a PM for help', icon_url='https://i.imgur.com/vahlwre.jpg')
     embed.set_thumbnail(url=res.LBXD_LOGO_WIDE)
     embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt)'
     pref = res.CMD_PREFIX
