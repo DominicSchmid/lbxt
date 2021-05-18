@@ -17,7 +17,8 @@ cogs = []  # stores all .py files
 
 """ TODO's
 - add an info command that shows eg your cinema channel, how many linked users, how many movies watched together idk
-- todo random chance to get emojis in your message?? idk lmao im out of ideas i havent slept in 3 days
+- Search movies by name and maaaaaybe genre
+- Maybe:
 """
 
 
@@ -67,23 +68,24 @@ async def lbxthelp(ctx):  # First parameter of function must be the context
     embed.set_footer(
         text='Made by Domski#1087. Send a PM for help', icon_url='https://i.imgur.com/vahlwre.jpg')
     embed.set_thumbnail(url=res.LBXD_LOGO_WIDE)
-    embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt)'
+    embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt)\n() are optional parameters\n| are aliases for the same command\n* are Administrator commands'
     pref = res.CMD_PREFIX
-    embed.add_field(name=f"{pref}cinema set <text channel> <voice channel>",
-                    value="Create a new cinema for this server", inline=False)
-    embed.add_field(name=f"{pref}cinema unset", value="Remove this server's cinema", inline=False)
-    embed.add_field(name=f"{pref}cinema clear (<amount>)",
-                    value="Delete certain amount of messages. Only works in cinema channel", inline=False)
     embed.add_field(name=f"{pref}link <lbxd user>",
                     value="Link this discord account with the given Letterboxd account", inline=False)
     embed.add_field(name=f"{pref}unlink", value="Unlink your Letterboxd account", inline=False)
-    embed.add_field(name=f"{pref}whois (<user>)", value="Shows information about a given user", inline=False)
-    embed.add_field(name=f"{pref}watchlist (<user>)",
+    embed.add_field(name=f"{pref}whois|who (<user>)", value="Shows information about a given user", inline=False)
+    embed.add_field(name=f"{pref}watchlist|wl (<user>)",
                     value="Show information about a user's Letterboxd watchlist (LBXD link needs to be set)", inline=False)
-    embed.add_field(name=f"{pref}watchlist compare <user> (<user2>, <user3>, ...)",
+    embed.add_field(name=f"{pref}watchlist|wl compare|cmp <user> (<user2>, <user3>, ...)",
                     value="Compares all given user's watchlists and returns a new list with movies that are on all the lists", inline=False)
     embed.add_field(name=f"{pref}random", value="Selects a random movie for you to watch", inline=False)
     embed.add_field(name=f"{pref}ping", value="Replise 'Pong!' and shows your delay to the bot", inline=False)
+    embed.add_field(name=f"{pref}clear (<amount>) *",
+                    value="Deletes a given amount of messages from a channel (or purges the whole channel)", inline=False)
+    embed.add_field(name=f"{pref}cinema|cine", value="Shows information about this server's cinema", inline=False)
+    embed.add_field(name=f"{pref}cinema|cine set <text channel> <voice channel> *",
+                    value="Create a new cinema for this server", inline=False)
+    embed.add_field(name=f"{pref}cinema|cine unset *", value="Remove this server's cinema", inline=False)
     """Replies 'Pong!' and shows your delay to the bot"""
     await ctx.send(embed=embed)
 
@@ -122,12 +124,13 @@ async def change_status():
 
 @client.command(name='clear', aliases=['purge'])
 @commands.has_permissions(manage_messages=True)  # Only run if user has delete permissions
-async def clear(ctx, amount: Optional[int]):
+async def clear(ctx, amount=10):
     """Delete a given amount of messages or purge entire channel"""
-    await ctx.channel.purge(limit=amount)  # +1 because the delete command also counts as message
-    if amount is None:
-        amount = 'all'
-    await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
+    if isinstance(amount, int) and amount > 0:
+        await ctx.channel.purge(limit=amount)  # +1 because the delete command also counts as message
+        if amount is None:
+            amount = 'all'
+        await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
 for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):

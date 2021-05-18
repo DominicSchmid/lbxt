@@ -3,6 +3,7 @@ import resources as res
 from discord import Embed
 from discord.ext import commands
 from typing import Optional
+import random
 
 import db
 
@@ -21,14 +22,20 @@ class Cinema(commands.Cog):
             cinema_channel = self.client.get_channel(int(cinema[1]))  # Get cinema obj from int ID
             # Muting also calls this, so check for after=before
 
+            if random.random() < 0.4:  # 40% chance to get eastegg
+                eastereggs = ["Consider joining 🙂",
+                              "(again)", "They're probably rewatching ⭐⚔️", "Quick! Run!", "So?", "💉💎", "👦🏻👓⚡", "❌🗣️", "Time to throw PogChamp"]
+            else:
+                eastereggs = [""]
+
             if after.channel == cinema_channel and before.channel != cinema_channel:
                 # TODO send PM telling user if a watchparty has already been started and if not how to make one
                 cinema_watchers = len(after.channel.members) - 1
                 if cinema_watchers > 0:
                     # TODO send into cinema channel
-                    description = f'**{member.name}** just joined the cinema with {cinema_watchers} other(s)! Consider joining 🙂'
+                    description = f'**{member.name}** just joined the cinema with {cinema_watchers} other(s)! {random.choice(eastereggs)}'
                 else:
-                    description = f'**{member.name}** just joined the cinema! Consider joining 🙂'
+                    description = f'**{member.name}** just joined the cinema! {random.choice(eastereggs)}'
             elif after.channel != cinema_channel and before.channel == cinema_channel:
                 cinema_watchers = len(before.channel.members)
                 if cinema_watchers == 1:
@@ -41,7 +48,7 @@ class Cinema(commands.Cog):
                 print(description)
                 await text.send(description)
 
-    @commands.group(name='cinema', aliases=['cine', 'c'], invoke_without_command=True)
+    @commands.group(name='cinema', aliases=['cine'], invoke_without_command=True)
     async def cinema(self, ctx):
         """Shows this server's cinema channels or a tutorial"""
         cinema = db.fetch_cinemas(ctx.guild.id)
@@ -67,6 +74,9 @@ class Cinema(commands.Cog):
     async def set_cinema_channel(self, ctx, text_channel: discord.TextChannel, voice_channel: discord.VoiceChannel):
         """Select text and voice channel for watchparties"""
 
+        if not ctx.message.author.guild_permissions.administrator:
+            return
+
         result = db.execute('SELECT * FROM cinemas WHERE server_id = ?', (ctx.guild.id,))
 
         if result:
@@ -88,6 +98,10 @@ class Cinema(commands.Cog):
     @cinema.command(name='unset')
     async def unset_cinema_channels(self, ctx, message=None):
         """Remove cinema channel binding"""
+
+        if not ctx.message.author.guild_permissions.administrator:
+            return
+
         cinema = db.fetch_cinemas(ctx.guild.id)
 
         if cinema:
@@ -130,17 +144,8 @@ class Cinema(commands.Cog):
                 'Please specify both a text channel and voice channel for your cinema!')
             await ctx.send(embed=embed)
         else:
-            await ctx.send(error)
-
-    @cinema.command(name='clear', aliases=['purge'])
-    async def clear_cinema(self, ctx, amount=10):  # Everybody can use this command in the cinema channel.
-        """Delete a given amount of messages or purge entire cinema channel"""
-        text = self.get_cinema_text_channel(ctx.guild.id)
-        if text and int(text.id) == int(ctx.channel.id):
-            await text.purge(limit=amount)
-            if amount is None:
-                amount = 'all'
-            await text.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
+            embed = get_cinema_creation_help_easy(error)
+            await ctx.send(embed=embed)
 
     # Optional:
     # So if your bot leaves a guild, the guild is removed from the dict
