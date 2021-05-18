@@ -53,11 +53,29 @@ def fetch_user(user_id):
         return result[0] if result else None  # Redurn DISC
 
 
-def fetch_users() -> List:
+def fetch_users() -> List:  # TODO this should probably be removed
     """Returns a list of all Users in the database (disc_id, lbxd_id)"""
     db = sqlite3.connect(res.DB_NAME)
     cursor = db.cursor()
     users = cursor.execute('SELECT * FROM users').fetchall()
+    db.commit()
+    cursor.close()
+    db.close()
+    return users
+
+
+def fetch_links_from_userlist(user_list: List) -> List:
+    """Takes a list of Members on a server and returns the lbxd links found in the db for those"""
+    if not user_list:  # Empty or None
+        return []
+
+    user_tuple = tuple([member.id for member in user_list])  # ID Tuple (2552747, 235626, 62742, etc)
+
+    db = sqlite3.connect(res.DB_NAME)
+    db.set_trace_callback(print)  # prints all code
+    cursor = db.cursor()
+    sql = f'SELECT * FROM users WHERE disc_id IN {user_tuple}'
+    users = cursor.execute(sql).fetchall()
     db.commit()
     cursor.close()
     db.close()

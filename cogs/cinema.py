@@ -3,7 +3,6 @@ import resources as res
 from discord import Embed
 from discord.ext import commands
 from typing import Optional
-from datetime import datetime
 
 import db
 
@@ -37,7 +36,7 @@ class Cinema(commands.Cog):
                 else:
                     description = f'**{member.name}** just left the cinema! 😢'
 
-            text = self.get_cinema_text_channel(member.guild.id)
+            text = self.get_cinema_text_channel(member.guild.id)  # Get the server's cinema channel
             if text and description:
                 print(description)
                 await text.send(description)
