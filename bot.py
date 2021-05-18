@@ -1,10 +1,14 @@
 import os
 import sys
 import resources as res
+from datetime import datetime
 
 import discord
+from discord import Embed
 from discord.ext import commands, tasks
 from typing import Optional
+
+import lbxd_scraper as lbxd
 
 intents = discord.Intents(messages=True, guilds=True, reactions=True, members=True, presences=True, voice_states=True)
 client = commands.Bot(command_prefix=res.CMD_PREFIX, intents=intents, case_insensitive=True)  # Use dot to make commands
@@ -59,6 +63,25 @@ async def reload(ctx, extension=None):
 async def ping(ctx):  # First parameter of function must be the context
     """Replies 'Pong!' and shows your delay to the bot"""
     await ctx.send(f'Pong! {round(client.latency * 1000)}ms')
+
+
+@client.command(name='random', aliases=['ran'])
+async def random(ctx):  # First parameter of function must be the context
+    """Returns a random movie for you to watch
+
+    Currently picks a random movie from this list:
+    https://letterboxd.com/tobiasandersen2/list/random-movie-roulette/
+    as this bot has no API access and needs to scrape the pages"""
+    movie = lbxd.get_random_movie_from_page('tobiasandersen2', 'random-movie-roulette')  # Should be like 90 something
+
+    if movie:
+        embed = Embed(title=getattr(movie, 'name'), url=getattr(movie, 'link'), description=getattr(movie, 'release_year'),
+                      color=discord.Colour.green(), timestamp=datetime.utcnow())
+        embed.set_thumbnail(url=getattr(movie, 'img'))
+        embed.set_footer(icon_url=res.LBXD_LOGO, text=f'on Letterboxd.com')  # {ctx.author.name}')
+        await ctx.send(f'{ctx.author.mention} I think you will like this movie:', embed=embed)
+    else:
+        await ctx.send(f'Oops! This looks like an issue on our end. Please try again.')
 
 
 @tasks.loop(seconds=30)  # Update status every 30 seconds

@@ -10,6 +10,7 @@ from discord.ext import commands
 from sqlite3 import OperationalError
 
 import db
+from db import fetch_user
 from lbxd_scraper import get_watchlist_size
 
 
@@ -17,6 +18,21 @@ class Users(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+
+    async def get_user_lbxd(client, ctx, user):
+        """Tries to return a tuple (disc_id, lbxd_id) for a given search value. Both can be None"""
+        if isinstance(user, Member):  # If user is a member, fetch his lbxd_id (can be None) from db
+            lbxd_id = fetch_user(user.id)
+        else:  # isinstance(user, str):
+            try:  # to convert given user (eg. username)
+                user = await commands.MemberConverter().convert(ctx, str(user))
+                lbxd_id = fetch_user(user.id)
+            except commands.BadArgument:  # If conversion doesnt work, expect a LBXD_ID username
+                lbxd_id = user
+                user = fetch_user(lbxd_id)  # Get associated discord account from DB. If there isnt one -> None
+                if user:
+                    user = client.get_user(int(user))  # Convert ID from DB into a Member instance
+        return (user, lbxd_id)
 
     @commands.command(name='whois', aliases=['userinfo', 'ui', 'who'])
     # Optional is like Union[Member, None]. If member can be converted to type member it will, otherwise None

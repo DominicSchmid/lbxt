@@ -1,12 +1,15 @@
+import concurrent.futures
+import random
+from datetime import datetime
+
 import discord
 import lbxd_scraper
 import resources as res
-from db import fetch_user
 from discord import Embed, Member
 from discord.ext import commands
-import concurrent.futures
 from resources import Movielist
-import random
+
+from cogs.users import Users
 
 
 class Watchlist(commands.Cog):
@@ -14,21 +17,6 @@ class Watchlist(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.preview_amount = 5
-
-    async def _get_user_lbxd(self, ctx, user):
-        """Tries to return a tuple (disc_id, lbxd_id) for a given search value. Both can be None"""
-        if isinstance(user, Member):  # If user is a member, fetch his lbxd_id (can be None) from db
-            lbxd_id = fetch_user(user.id)
-        else:  # isinstance(user, str):
-            try:  # to convert given user (eg. username)
-                user = await commands.MemberConverter().convert(ctx, str(user))
-                lbxd_id = fetch_user(user.id)
-            except commands.BadArgument:  # If conversion doesnt work, expect a LBXD_ID username
-                lbxd_id = user
-                user = fetch_user(lbxd_id)  # Get associated discord account from DB. If there isnt one -> None
-                if user:
-                    user = self.client.get_user(int(user))  # Convert ID from DB into a Member instance
-        return (user, lbxd_id)
 
     # todo make getlist command, opt limit parameter that shows imgs until like 10, list until like 50 and info otherwise
 
@@ -42,7 +30,7 @@ class Watchlist(commands.Cog):
         > 50: General info"""
 
         user = user or ctx.author
-        values = await self._get_user_lbxd(ctx, user)
+        values = await Users.get_user_lbxd(self.client, ctx, user)
         user = values[0]  # Either a user Object or None
         lbxd_id = values[1]  # String containing lbxd name
 
@@ -103,7 +91,7 @@ class Watchlist(commands.Cog):
         users = []  # create list from *others tuple
 
         if len(others) == 1:  # Compare author with person specified in others
-            values = await self._get_user_lbxd(ctx, ctx.author)
+            values = await Users.get_user_lbxd(self.client, ctx, ctx.author)
             lbxd = values[1]  # String containing lbxd name or Non""e
             if not lbxd:  # LBXD Account for B not found, User exists -> Need to link
                 embed = Embed(
@@ -113,7 +101,7 @@ class Watchlist(commands.Cog):
 
         # Check all others for errors
         for other in others:
-            values = await self._get_user_lbxd(ctx, other)
+            values = await Users.get_user_lbxd(self.client, ctx, other)
             user = values[0]  # Either a Member object or None
             lbxd = values[1]  # String containing lbxd name or Non""e
 
@@ -172,10 +160,11 @@ class Watchlist(commands.Cog):
             for movie in common_movies.get_movies():
                 if len(description) > 2000:  # Description max length = 2048
                     description = "\n\nand more... This was definitely enough!"  # EZ Clap 5 to spare
-                description += f'({movie.name} - {movie.release_year})[{movie.link}]\n'
+                description += str(movie) + "\n"
 
             embed = Embed(title=f'There are **{common_movies.length()}** movies on everyones watchlist! 🙌', description=description,
-                          color=discord.Colour.green())
+                          color=discord.Colour.green(), timestamp=datetime.utcnow())
+            embed.set_footer(icon_url=ctx.author.avatar_url, text=f'Requested by {ctx.author.name}')
             if image:
                 embed.set_thumbnail(url=image)
             else:

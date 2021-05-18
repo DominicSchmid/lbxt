@@ -1,6 +1,7 @@
 import concurrent.futures
 import time
 from typing import List
+import random
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,23 +25,26 @@ def req_movie_info(movie):
     return data.text if data.status_code == requests.codes.ok else None  # Returns HTML or None
 
 
-def get_watchlist_pages(user: str) -> int:
-    """Gets the number of pages on somebodys watchlist"""
-    WL_URL = res.LBXD_URL + f'/{user}/watchlist'
+def get_list_pages(user: str, list_name: str) -> int:
+    """Gets the number of pages on somebodys list"""
+    if list_name == 'watchlist':  # Watchlist has a different format for some fucking reason
+        WL_URL = res.LBXD_URL + f'/{user}/watchlist'
+    else:
+        WL_URL = res.LBXD_URL + f'/{user}/list/{list_name}'
 
     # Start by only getting first page. From there get how many more pages there are, if any
     first_page = requests.get(WL_URL)
 
     if first_page.status_code == 200:  # Account exists
-        return _get_watchlist_pages_direct(first_page.text)
+        return _get_list_pages_direct(first_page.text)
         # Directly get user watchlist length to save work
     else:
         print('Error user doesnt exist')
         return -1
 
 
-def _get_watchlist_pages_direct(page) -> int:
-    """Helper function that takes html code of page and gets wl pages from it"""
+def _get_list_pages_direct(page) -> int:
+    """Helper function that takes html code of list page and gets the pages from it"""
     soup = BeautifulSoup(page, 'html.parser')
     pages = soup.find_all('li', class_='paginate-page')  # Get the list of pages
 
@@ -114,6 +118,7 @@ def get_movies_on_page(page) -> List[Movie]:
 
 
 def get_page(url):
+    """Gets the additional data for a movie"""
     with requests.get(url) as response:
         if response.status_code == 200:
             movies_on_page = get_movies_on_page(response.text)
@@ -121,6 +126,54 @@ def get_page(url):
         else:
             print(f'Could not get data for page {url}')
             return []
+
+
+def get_random_movie_from_page(user: str, list_name: str) -> Movie:
+    start_time = time.time()
+    """Gets the number of pages on a list watchlist"""
+    pages = get_list_pages(user, list_name)  # Makes one request to start page
+    if pages == -1:
+        return None
+
+    page = random.randint(1, pages)  # Either 1 or a random number
+
+    if list_name == 'watchlist':  # Watchlist has a different format for some fucking reason
+        WL_URL = res.LBXD_URL + f'/{user}/watchlist'
+    else:
+        WL_URL = res.LBXD_URL + f'/{user}/list/{list_name}'
+
+    # Gets the random page. From there get how many more pages there are, if any
+    page = requests.get(WL_URL)
+
+    if page.status_code != 200:
+        print('Error during request')
+        return
+
+    soup = BeautifulSoup(page.text, 'html.parser')
+    # TODO this is probably where one could optimize. Need to know how many movies are on this page to skip this findall
+    m_list = soup.find_all('div', class_='film-poster')  # Returns list containing html movies
+
+    if not m_list:  # if there are no movies in the list
+        return None
+
+    # Get random html movie from list and get additional html for the chosen movie
+    movie_html = req_movie_info(random.choice(m_list))
+
+    soup = BeautifulSoup(movie_html, 'html.parser')
+    div = soup.find('div')
+    img = soup.find('img')
+    a = soup.find('a')
+
+    if div and img and a:  # If no null values
+        id = div['data-film-id']
+        name = div['data-film-name']
+        release_year = div['data-film-release-year']
+        img_src = img['src']
+        link = a['href']
+
+        movie = Movie(name, release_year, id=id, img=img_src, link=f'{res.LBXD_URL}{link}')
+        print(f'Found random movie after {round(time.time() - start_time, 5)} seconds.')
+        return movie
 
 
 def get_watchlist(user: str, limit: int = 0) -> Movielist:
@@ -143,7 +196,7 @@ def get_watchlist(user: str, limit: int = 0) -> Movielist:
     if first_page.status_code == 200:  # Account exists
         # Directly get user watchlist length to save work
         #wl_size = _get_watchlist_size_direct(first_page.text)
-        pages = _get_watchlist_pages_direct(first_page.text)
+        pages = _get_list_pages_direct(first_page.text)
 
         # DEV Note: This leads to a req being made to the first page TWICE. Trying to fix it
         # List is not empty
