@@ -172,7 +172,9 @@ class Users(commands.Cog):
                 embed.set_thumbnail(url=res.LBXD_LOGO)
                 await ctx.send(embed=embed)
             else:
-                await ctx.send(f'Oh no {ctx.author.mention}! If you want to link your own account you need to provide your Letterboxd name: `{res.CMD_PREFIX}link <lbxd account>`')
+                embed = Embed(
+                    description=f'Oh no {ctx.author.mention}!\nIf you want to link your own account you need to provide your Letterboxd name: `{res.CMD_PREFIX}link <lbxd account>`', color=discord.Colour.red())
+                await ctx.send(embed=embed)
         elif isinstance(error, OperationalError):
             await ctx.send('There was an unexpected backend error on our side. Please try again.', file=sys.stderr)
             print(error, )

@@ -43,7 +43,7 @@ class Watchlist(commands.Cog):
             movielist = lbxd_scraper.get_watchlist(lbxd_id, self.preview_amount)
 
             if not movielist:  # Account does not exists
-                embed = Embed(title="Watchlist Error", description=f"The Letterboxd account **{lbxd_id}** doesn't exist. Learn to type yo",
+                embed = Embed(title="Watchlist Error", description=f"The Letterboxd account **{lbxd_id}** doesn't exist.\nLearn to type yo",
                               color=discord.Colour.red())
                 return await ctx.send(embed=embed)
 

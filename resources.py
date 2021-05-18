@@ -1,5 +1,6 @@
 from typing import List
 LBXD_LOGO = 'https://i.imgur.com/qpz1mJ0.png'
+LBXD_LOGO_WIDE = 'https://i.imgur.com/JchhRTf.png'
 LBXD_URL = 'https://letterboxd.com'
 DB_NAME = 'main.sqlite'
 DISCORD_TOKEN = './static/discord_token.txt'

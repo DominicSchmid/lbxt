@@ -60,6 +60,35 @@ async def reload(ctx, extension=None):
 
 
 @client.command()
+async def lbxthelp(ctx):  # First parameter of function must be the context
+    embed = Embed(color=discord.Colour.green(), timestamp=datetime.utcnow())
+    embed.set_author(
+        name='Letterboxd Bot', icon_url=res.LBXD_LOGO)
+    embed.set_footer(
+        text='Made by Domski#1087. Send PM for help', icon_url='https://i.imgur.com/vahlwre.jpg')
+    embed.set_thumbnail(url=res.LBXD_LOGO_WIDE)
+    embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt)'
+    pref = res.CMD_PREFIX
+    embed.add_field(name=f"{pref}cinema set <text channel> <voice channel>",
+                    value="Create a new cinema for this server", inline=False)
+    embed.add_field(name=f"{pref}cinema unset", value="Remove this server's cinema", inline=False)
+    embed.add_field(name=f"{pref}cinema clear (<amount>)",
+                    value="Delete certain amount of messages. Only works in cinema channel", inline=False)
+    embed.add_field(name=f"{pref}link <lbxd user>",
+                    value="Link this discord account with the given Letterboxd account", inline=False)
+    embed.add_field(name=f"{pref}unlink", value="Unlink your Letterboxd account", inline=False)
+    embed.add_field(name=f"{pref}whois (<user>)", value="Shows information about a given user", inline=False)
+    embed.add_field(name=f"{pref}watchlist (<user>)",
+                    value="Show information about a user's Letterboxd watchlist (LBXD link needs to be set)", inline=False)
+    embed.add_field(name=f"{pref}watchlist compare <user> (<user2>, <user3>, ...)",
+                    value="Compares all given user's watchlists and returns a new list with movies that are on all the lists", inline=False)
+    embed.add_field(name=f"{pref}random", value="Selects a random movie for you to watch", inline=False)
+    embed.add_field(name=f"{pref}ping", value="Replise 'Pong!' and shows your delay to the bot", inline=False)
+    """Replies 'Pong!' and shows your delay to the bot"""
+    await ctx.send(embed=embed)
+
+
+@client.command()
 async def ping(ctx):  # First parameter of function must be the context
     """Replies 'Pong!' and shows your delay to the bot"""
     await ctx.send(f'Pong! {round(client.latency * 1000)}ms')
@@ -72,6 +101,7 @@ async def random(ctx):  # First parameter of function must be the context
     Currently picks a random movie from this list:
     https://letterboxd.com/tobiasandersen2/list/random-movie-roulette/
     as this bot has no API access and needs to scrape the pages"""
+    await ctx.send('Picking a really special movie for you.. Give me a sec', delete_after=5)
     movie = lbxd.get_random_movie_from_page('tobiasandersen2', 'random-movie-roulette')  # Should be like 90 something
 
     if movie:
@@ -86,7 +116,8 @@ async def random(ctx):  # First parameter of function must be the context
 
 @tasks.loop(seconds=30)  # Update status every 30 seconds
 async def change_status():
-    await client.change_presence(status=discord.Status.online, activity=discord.Game(f'.help - {len(client.guilds)} servers'))
+    # TODO if i change prefix i should change this
+    await client.change_presence(status=discord.Status.online, activity=discord.Game(f'.lbxthelp - {len(client.guilds)} servers'))
 
 
 @client.command(name='clear', aliases=['purge'])
