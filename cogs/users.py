@@ -11,7 +11,7 @@ from sqlite3 import OperationalError
 
 import db
 from db import fetch_user
-from lbxd_scraper import get_watchlist_size
+from lbxd_scraper import get_watchlist_size, account_exists
 
 
 class Users(commands.Cog):
@@ -89,23 +89,27 @@ class Users(commands.Cog):
 
         show_link = True  # Show new link by default
 
-        if d_id is None and l_id is None:  # Add new user since both dont exist
-            sql = ('INSERT INTO users(disc_id, lbxd_id) VALUES (?,?)')
-            val = (member_uid, lbxd_user)
-            db.execute(sql, val)
-            desc = 'Linked successfully!'
-        elif d_id is not None and l_id is None:  # Update user since user exists but lbxd is new
-            sql = ('UPDATE users SET lbxd_id = ? WHERE disc_id = ?')
-            val = (lbxd_user, member_uid)
-            db.execute(sql, val)
-            desc = f'Successfully changed from [{d_id[1]}](https://letterboxd.com/{d_id[1]}) to:'
-        # lbxd name already exists for another user, check if this user is you (no changes) or not (illegal)
-        else:
-            if l_id == d_id:  # If you entered your account
-                desc = f'You have already linked those accounts. No changes have been made.'
+        if account_exists(lbxd_user):
+            if d_id is None and l_id is None:  # Add new user since both dont exist
+                sql = ('INSERT INTO users(disc_id, lbxd_id) VALUES (?,?)')
+                val = (member_uid, lbxd_user)
+                db.execute(sql, val)
+                desc = 'Linked successfully!'
+            elif d_id is not None and l_id is None:  # Update user since user exists but lbxd is new
+                sql = ('UPDATE users SET lbxd_id = ? WHERE disc_id = ?')
+                val = (lbxd_user, member_uid)
+                db.execute(sql, val)
+                desc = f'Successfully changed from [{d_id[1]}](https://letterboxd.com/{d_id[1]}) to:'
+            # lbxd name already exists for another user, check if this user is you (no changes) or not (illegal)
             else:
-                desc = f'Hey {ctx.author.mention}! [{lbxd_user}](https://letterboxd.com/{lbxd_user}) is already linked to another account.\nPlease contact an administrator if you think this is an error.'
-                show_link = False
+                if l_id == d_id:  # If you entered your account
+                    desc = f'You have already linked those accounts. No changes have been made.'
+                else:
+                    desc = f'Hey {ctx.author.mention}! [{lbxd_user}](https://letterboxd.com/{lbxd_user}) is already linked to another account.\nPlease contact an administrator if you think this is an error.'
+                    show_link = False
+        else:
+            desc = f"It seems like the user **{lbxd_user}** doesn't exist!\nMake sure you didn't type the <> and try again?"
+            show_link = False
 
         embed = Embed(description=desc, color=discord.Colour.green())
         if show_link:
@@ -173,7 +177,7 @@ class Users(commands.Cog):
                 await ctx.send(embed=embed)
             else:
                 embed = Embed(
-                    description=f'Oh no {ctx.author.mention}!\nIf you want to link your own account you need to provide your Letterboxd name: `{res.CMD_PREFIX}link <lbxd account>`', color=discord.Colour.red())
+                    description=f'Oh no {ctx.author.mention}!\nIf you want to link your own account you need to provide your Letterboxd name: ```{res.CMD_PREFIX}link <lbxd account>```', color=discord.Colour.red())
                 await ctx.send(embed=embed)
         elif isinstance(error, OperationalError):
             await ctx.send('There was an unexpected backend error on our side. Please try again.', file=sys.stderr)

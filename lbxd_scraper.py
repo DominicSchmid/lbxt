@@ -25,6 +25,14 @@ def req_movie_info(movie):
     return data.text if data.status_code == requests.codes.ok else None  # Returns HTML or None
 
 
+def account_exists(user: str) -> bool:
+    """Makes a GET request to the user and if site returns 404 this function returns false (user does not exist)"""
+    response = requests.get(res.LBXD_URL + f'/{user}')
+    if response.status_code == 404:
+        return False
+    return True
+
+
 def get_list_pages(user: str, list_name: str) -> int:
     """Gets the number of pages on somebodys list"""
     if list_name == 'watchlist':  # Watchlist has a different format for some fucking reason
