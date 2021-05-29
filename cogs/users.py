@@ -11,7 +11,6 @@ from sqlite3 import OperationalError
 import postgres_helper as db
 from db import fetch_user
 from lbxd_scraper import get_watchlist_size, account_exists
-import psycopg2
 
 
 class Users(commands.Cog):
@@ -139,30 +138,29 @@ class Users(commands.Cog):
     @commands.command(name='users', aliases=['linklist', 'list'], pass_context=True)
     async def link_list(self, ctx):
         """Display all Discord accounts and their linked Letterboxd accounts"""
-        if ctx.author.guild_permissions.administrator:  # Only admins can list all connections
-            # TODO maybe need to replace this with api_call ctx.guild.fetch_members(limit=None)
-            results = db.fetch_links_from_userlist(ctx.guild.members)
-            # results = db.fetch_users()  # TODO probably should join with guild db to only show users on this server
+        # TODO maybe need to replace this with api_call ctx.guild.fetch_members(limit=None)
+        results = db.fetch_links_from_userlist(ctx.guild.members)
+        # results = db.fetch_users()  # TODO probably should join with guild db to only show users on this server
 
-            if results is None:
-                embed = Embed(description=f'There are **no** linked user accounts so far!',
-                              color=discord.Colour.red(), timestamp=datetime.utcnow())
+        if results is None:
+            embed = Embed(description=f'There are **no** linked user accounts so far!',
+                          color=discord.Colour.red(), timestamp=datetime.utcnow())
 
-            elif len(results) < 40 and len(results) > 0:  # Max 40 fields to embed
-                embed = Embed(title=f'{ctx.guild.name}\'s user list', description=f'Found **{len(results)}** users with linked accounts',
-                              color=discord.Colour.green(), timestamp=datetime.utcnow())
-                embed.set_thumbnail(url=res.LBXD_LOGO)
-                embed.set_footer(icon_url=ctx.author.avatar_url, text=f'Requested by {ctx.author.name}')
+        elif len(results) < 40 and len(results) > 0:  # Max 40 fields to embed
+            embed = Embed(title=f'{ctx.guild.name}\'s user list', description=f'Found **{len(results)}** users with linked accounts',
+                          color=discord.Colour.green(), timestamp=datetime.utcnow())
+            embed.set_thumbnail(url=res.LBXD_LOGO)
+            embed.set_footer(icon_url=ctx.author.avatar_url, text=f'Requested by {ctx.author.name}')
 
-                for r in results:
-                    user = self.client.get_user(int(r[0]))
-                    if user:
-                        embed.add_field(name=user.name, value=f'[{r[1]}](https://letterboxd.com/{r[1]})')
-            else:
-                embed = Embed(description=f'There are **{len(results)}** linked user accounts on this server!',
-                              color=discord.Colour.green(), timestamp=datetime.utcnow())
+            for r in results:
+                user = self.client.get_user(int(r[0]))
+                if user:
+                    embed.add_field(name=user.name, value=f'[{r[1]}](https://letterboxd.com/{r[1]})')
+        else:
+            embed = Embed(description=f'There are **{len(results)}** linked user accounts on this server!',
+                          color=discord.Colour.green(), timestamp=datetime.utcnow())
 
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
     @link_user.error
     async def link_user_error(self, ctx, error):

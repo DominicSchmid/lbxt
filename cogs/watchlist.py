@@ -64,6 +64,8 @@ class Watchlist(commands.Cog):
                                   color=discord.Colour.green())
                     embed.set_footer(icon_url=res.LBXD_LOGO,
                                      text=f'on Letterboxd.com ')  # {ctx.author.name}')
+                    await ctx.send(embed=embed)
+                return
             else:
                 if user:
                     embed = Embed(title=f"{user.name}'s watchlist", description=f'Hey {user.mention}, your watchlist seems to be empty!\nWould you like to [add some movies]({res.LBXD_URL}/{lbxd_id}/watchlist)?',
