@@ -4,7 +4,7 @@ import resources as res
 from discord import Embed, Member
 from discord.ext import commands
 
-import db
+import postgres_helper as db
 
 
 class Movielist(commands.Cog):

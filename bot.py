@@ -9,6 +9,7 @@ from discord.ext import commands, tasks
 from typing import Optional
 
 import lbxd_scraper as lbxd
+from postgres_helper import setup_db, delete_cinemas
 
 intents = discord.Intents(messages=True, guilds=True, reactions=True, members=True, presences=True, voice_states=True)
 client = commands.Bot(command_prefix=res.CMD_PREFIX, intents=intents, case_insensitive=True)  # Use dot to make commands
@@ -26,6 +27,15 @@ cogs = []  # stores all .py files
 async def on_ready():  # When bot has all information, bot goes into ready state
     change_status.start()
     print(f'{client.user} is ready.')
+    setup_db()
+
+
+@client.event
+# The client got banned. The client got kicked. The client left the guild. The client or the guild owner deleted the guild.
+async def on_guild_remove(ctx):
+    print(f"The client was removed from Guild {ctx.message.guild.name} ({ctx.guild.id})")
+    print("Removing Cinema links...")
+    delete_cinemas(ctx.guild.id)
 
 
 def load_cogs(cogs):
@@ -68,7 +78,7 @@ async def lbxthelp(ctx):  # First parameter of function must be the context
     embed.set_footer(
         text='Made by Domski#1087. Send a PM for help', icon_url='https://i.imgur.com/vahlwre.jpg')
     embed.set_thumbnail(url=res.LBXD_LOGO_WIDE)
-    embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt)\n() are optional parameters\n| are aliases for the same command\n* are Administrator commands'
+    embed.description = '[GitHub](https://github.com/DominicSchmid/lbxt) | Explanation:\n() are optional parameters\n| are aliases for the same command\n* are Administrator commands'
     pref = res.CMD_PREFIX
     embed.add_field(name=f"{pref}link <lbxd user>",
                     value="Link this discord account with the given Letterboxd account", inline=False)
@@ -80,12 +90,12 @@ async def lbxthelp(ctx):  # First parameter of function must be the context
                     value="Compares all given user's watchlists and returns a new list with movies that are on all the lists", inline=False)
     embed.add_field(name=f"{pref}random", value="Selects a random movie for you to watch", inline=False)
     embed.add_field(name=f"{pref}ping", value="Replise 'Pong!' and shows your delay to the bot", inline=False)
-    embed.add_field(name=f"{pref}clear (<amount>) *",
-                    value="Deletes a given amount of messages from a channel (or purges the whole channel)", inline=False)
     embed.add_field(name=f"{pref}cinema|cine", value="Shows information about this server's cinema", inline=False)
-    embed.add_field(name=f"{pref}cinema|cine set <text channel> <voice channel> *",
+    embed.add_field(name=f"* {pref}cinema|cine set <text channel> <voice channel>",
                     value="Create a new cinema for this server", inline=False)
-    embed.add_field(name=f"{pref}cinema|cine unset *", value="Remove this server's cinema", inline=False)
+    embed.add_field(name=f"* {pref}cinema|cine unset", value="Remove this server's cinema", inline=False)
+    embed.add_field(name=f"* {pref}clear (<amount>)",
+                    value="Deletes a given amount of messages from a channel (or purges the whole channel)", inline=False)
     """Replies 'Pong!' and shows your delay to the bot"""
     await ctx.send(embed=embed)
 
@@ -132,6 +142,9 @@ async def clear(ctx, amount=10):
             amount = 'all'
         await ctx.send(f'Successfully deleted **{amount}** messages!', delete_after=5)
 
+
+# SETUP BOT
+
 for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         cogs.append(filename)
@@ -139,8 +152,17 @@ load_cogs(cogs)  # Load all cogs. No arg specified -> refresh from folder
 
 token = os.getenv('DISCORD_TOKEN')
 if not token:
-    with open(res.DISCORD_TOKEN) as f:
+    with open(res.DISCORD_TOKEN) as f:  # ENV not found, opens txt file for discord token (locally)
         token = f.read()
+    if not token:
+        print("!!!CRITICAL ERROR: Environment Variable DISCORD_TOKEN not found")
+
+res.DATABASE_URL = os.getenv('DATABASE_URL')
+if not res.DATABASE_URL:
+    print("!!!CRITICAL ERROR: Environment Variable DATABASE_URL not found")
+    exit()
+    """with open(res.DISCORD_TOKEN) as f:
+        token = f.read()"""
 
 client.run(token)
 print('Bot started!')

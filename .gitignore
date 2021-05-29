@@ -1,10 +1,10 @@
 /static/discord_token.txt
+/static/dbhelp.txt
+/cogs/__pycache__/
 tempCodeRunnerFile.py
 testing_bot.py
 lbxd_vscode_workspace.code-workspace
-/cogs/__pycache__/
-/cogs/example.py
-/cogs/test.py
+main.sqlite
 
 
 #######################################

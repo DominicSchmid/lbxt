@@ -6,6 +6,7 @@ DB_NAME = 'main.sqlite'
 DISCORD_TOKEN = './static/discord_token.txt'
 CMD_PREFIX = '.'  # TODO these alll need to go into a config outside
 BOT_NAME = 'LBxt'
+DATABASE_URL = 'postgres'
 
 
 class Movie(object):

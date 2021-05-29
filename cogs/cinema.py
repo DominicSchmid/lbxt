@@ -5,7 +5,7 @@ from discord.ext import commands
 from typing import Optional
 import random
 
-import db
+import postgres_helper as db
 
 
 class Cinema(commands.Cog):
@@ -39,7 +39,7 @@ class Cinema(commands.Cog):
             elif after.channel != cinema_channel and before.channel == cinema_channel:
                 cinema_watchers = len(before.channel.members)
                 if cinema_watchers == 1:
-                    description = f'**{member.name}** just left the cinema. Now {before.channel.members[0].mention} is all alone! 😭'
+                    description = f'**{member.name}** just left the cinema. Now {before.channel.members[0].name} is all alone! 😭'
                 else:
                     description = f'**{member.name}** just left the cinema! 😢'
 
@@ -74,18 +74,18 @@ class Cinema(commands.Cog):
     async def set_cinema_channel(self, ctx, text_channel: discord.TextChannel, voice_channel: discord.VoiceChannel):
         """Select text and voice channel for watchparties"""
 
-        if not ctx.message.author.guild_permissions.administrator:
+        if not ctx.message.author.guild_permissions.administrator:  # You need admin privileges
             return
 
-        result = db.execute('SELECT * FROM cinemas WHERE server_id = ?', (ctx.guild.id,))
+        result = db.execute('SELECT * FROM cinemas WHERE server_id = %s', (str(ctx.guild.id),), fetch=True)
 
         if result:
-            sql = ('UPDATE cinemas SET text_id = ?, voice_id = ? WHERE server_id = ?')
-            val = (text_channel.id, voice_channel.id, ctx.guild.id)
+            sql = ('UPDATE cinemas SET text_id = %s, voice_id = %s WHERE server_id = %s')
+            val = (str(text_channel.id), str(voice_channel.id), str(ctx.guild.id))
             db.execute(sql, val)
         else:
-            sql = ('INSERT INTO cinemas(server_id, text_id, voice_id) VALUES (?,?,?)')
-            val = (ctx.guild.id, text_channel.id, voice_channel.id)
+            sql = ('INSERT INTO cinemas(server_id, text_id, voice_id) VALUES (%s,%s,%s)')
+            val = (str(ctx.guild.id), str(text_channel.id), str(voice_channel.id))
             db.execute(sql, val)
 
         embed = Embed(title=f'{ctx.message.guild.name} has a new cinema!', description='Join the voice channel during watchparties and use the text channel to play around with me!',

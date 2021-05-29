@@ -1,6 +1,5 @@
 import sys
 from datetime import datetime
-from textwrap import dedent
 from typing import Optional
 
 import discord
@@ -9,9 +8,10 @@ from discord import Embed, Member
 from discord.ext import commands
 from sqlite3 import OperationalError
 
-import db
+import postgres_helper as db
 from db import fetch_user
 from lbxd_scraper import get_watchlist_size, account_exists
+import psycopg2
 
 
 class Users(commands.Cog):
@@ -57,6 +57,7 @@ class Users(commands.Cog):
 
     @commands.command(name='link', pass_context=True)
     async def link_user(self, ctx, lbxd_user):
+        lbxd_user = str(lbxd_user)
         """
         Links your Discord account to the specified Letterboxd account
         Only works if the given Letterboxd account it hasn't already been linked to another account
@@ -83,20 +84,20 @@ class Users(commands.Cog):
 
         member_uid = str(ctx.author.id)  # Get numerical User ID
         # First, check if user is already in db
-        d_id = db.execute('SELECT * FROM users WHERE disc_id = ?', (member_uid,))
+        d_id = db.execute("SELECT * FROM users WHERE disc_id = %s", (member_uid,), fetch=True)
         # First, check if lbxd is already in db but on another account
-        l_id = db.execute('SELECT * FROM users WHERE lbxd_id = ?', (lbxd_user,))
+        l_id = db.execute("SELECT * FROM users WHERE lbxd_id = %s", (lbxd_user,), fetch=True)
 
-        show_link = True  # Show new link by default
+        show_link = True  # Show new link to lbxd site by default
 
         if account_exists(lbxd_user):
             if d_id is None and l_id is None:  # Add new user since both dont exist
-                sql = ('INSERT INTO users(disc_id, lbxd_id) VALUES (?,?)')
+                sql = ('INSERT INTO users(disc_id, lbxd_id) VALUES (%s,%s)')
                 val = (member_uid, lbxd_user)
                 db.execute(sql, val)
                 desc = 'Linked successfully!'
             elif d_id is not None and l_id is None:  # Update user since user exists but lbxd is new
-                sql = ('UPDATE users SET lbxd_id = ? WHERE disc_id = ?')
+                sql = ('UPDATE users SET lbxd_id = %s WHERE disc_id = %s')
                 val = (lbxd_user, member_uid)
                 db.execute(sql, val)
                 desc = f'Successfully changed from [{d_id[1]}](https://letterboxd.com/{d_id[1]}) to:'
@@ -121,10 +122,10 @@ class Users(commands.Cog):
     async def unlink_user(self, ctx):
         """Unlink the Letterboxd account associated with your Discord account"""
         member_uid = str(ctx.author.id)  # Get numerical User ID
-        result = db.execute('SELECT * FROM users WHERE disc_id = ?', (member_uid,))
+        result = db.execute('SELECT * FROM users WHERE disc_id = %s', (member_uid,), fetch=True)
 
         if result:  # First, check if user even exists in DB
-            db.execute('DELETE FROM users WHERE disc_id = ?', (member_uid,))
+            db.execute('DELETE FROM users WHERE disc_id = %s', (member_uid,))
             description = 'Unlinked successfully!'
         else:
             description = 'Your account has not been linked yet.\nNo changes have been made.'
@@ -167,7 +168,8 @@ class Users(commands.Cog):
     async def link_user_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):  # If ANY command gives this error at any point, this command runs
             # First, check if user is already in db
-            result = db.execute('SELECT * FROM users WHERE disc_id = ?', (str(ctx.author.id),))  # Get numerical User ID
+            result = db.execute('SELECT * FROM users WHERE disc_id = %s',
+                                (str(ctx.author.id),), fetch=True)  # Get numerical User ID
 
             if result:
                 embed = Embed(title='Linked accounts', color=discord.Colour.green())
