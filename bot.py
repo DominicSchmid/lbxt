@@ -72,6 +72,7 @@ async def reload(ctx, extension=None):
 
 @client.command()
 async def lbxthelp(ctx):  # First parameter of function must be the context
+    """Provides a sexier help interface :)"""
     embed = Embed(color=discord.Colour.green())
     embed.set_author(
         name='Letterboxd Bot', icon_url=res.LBXD_LOGO)
